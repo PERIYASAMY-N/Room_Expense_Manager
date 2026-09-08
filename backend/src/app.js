@@ -3,8 +3,21 @@ const cors = require('cors');
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// CORS — restrict to known frontend origin in production
+const allowedOrigins = process.env.FRONTEND_URL
+    ? [process.env.FRONTEND_URL]
+    : ['http://localhost:5173', 'http://localhost:3000'];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (e.g. mobile apps, curl, Railway health checks)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error(`CORS policy: origin ${origin} not allowed`));
+    },
+    credentials: false // App uses Bearer tokens, not cookies
+}));
+
 app.use(express.json());
 
 const authRoutes = require('./routes/authRoutes');
