@@ -4,7 +4,7 @@ import { formatCurrency, formatDate } from '../utils/formatters';
 import { Link } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 
-const MyMoney = () => {
+const PersonalDashboard = () => {
     const [summary, setSummary] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -42,28 +42,32 @@ const MyMoney = () => {
     return (
         <div className="max-w-3xl mx-auto space-y-6 px-4 md:px-0 pb-10">
             <div className="text-center pb-6 border-b border-gray-200">
-                <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tight">MY PERSONAL MONEY</h1>
-                <p className="text-gray-500 text-sm mt-1">Track your own income, expenses and savings separately from room expenses.</p>
+                <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tight">MY MONEY</h1>
+                <p className="text-gray-500 text-sm mt-1">Manage your personal income, expenses, savings and transactions.</p>
             </div>
 
             {/* CURRENT BALANCE */}
             <div className="text-center py-6">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">CURRENT BALANCE</h2>
-                <p className="text-5xl font-black text-blue-600">{formatCurrency(netBalance)}</p>
+                <p className="text-5xl font-black text-purple-600">{formatCurrency(netBalance)}</p>
             </div>
 
             {/* THIS MONTH */}
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-6 md:p-8 flex justify-between items-center">
-                <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">THIS MONTH</p>
-                    <div className="space-y-1">
-                        <div className="flex gap-4">
-                            <span className="text-gray-500 w-20">Money In</span>
-                            <span className="font-bold text-gray-900">{formatCurrency(totalIncome)}</span>
+                <div className="w-full">
+                    <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">SUMMARY</p>
+                    <div className="grid grid-cols-3 gap-4">
+                        <div>
+                            <div className="text-gray-500 mb-1">Total Income</div>
+                            <div className="font-bold text-gray-900 text-xl">{formatCurrency(totalIncome)}</div>
                         </div>
-                        <div className="flex gap-4">
-                            <span className="text-gray-500 w-20">Money Out</span>
-                            <span className="font-bold text-gray-900">{formatCurrency(totalExpenses)}</span>
+                        <div>
+                            <div className="text-gray-500 mb-1">Total Expenses</div>
+                            <div className="font-bold text-gray-900 text-xl">{formatCurrency(totalExpenses)}</div>
+                        </div>
+                        <div>
+                            <div className="text-gray-500 mb-1">Savings</div>
+                            <div className="font-bold text-gray-900 text-xl">{formatCurrency(netBalance)}</div>
                         </div>
                     </div>
                 </div>
@@ -71,10 +75,10 @@ const MyMoney = () => {
 
             {/* QUICK ACTIONS */}
             <div className="grid grid-cols-2 gap-4">
-                <Link to="/dashboard/my-money/add-income" className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-sm transition-all text-center">
-                    + Add Money
+                <Link to="/personal/add-income" className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-sm transition-all text-center">
+                    + Add Income
                 </Link>
-                <Link to="/dashboard/my-money/add-expense" className="bg-red-500 hover:bg-red-600 text-white font-bold py-4 rounded-xl shadow-sm transition-all text-center">
+                <Link to="/personal/add-expense" className="bg-red-500 hover:bg-red-600 text-white font-bold py-4 rounded-xl shadow-sm transition-all text-center">
                     + Add Personal Expense
                 </Link>
             </div>
@@ -135,4 +139,4 @@ const MyMoney = () => {
     );
 };
 
-export default MyMoney;
+export default PersonalDashboard;

@@ -16,8 +16,12 @@ import AddExpense from './pages/AddExpense';
 import ExpenseDetails from './pages/ExpenseDetails';
 import Settlements from './pages/Settlements';
 import MyMoney from './pages/MyMoney';
-
 import AddPersonalTransaction from './pages/AddPersonalTransaction';
+
+import PersonalLogin from './pages/PersonalLogin';
+import PersonalRegister from './pages/PersonalRegister';
+import PersonalLayout from './layouts/PersonalLayout';
+import PersonalDashboard from './pages/PersonalDashboard';
 
 function App() {
   return (
@@ -29,7 +33,11 @@ function App() {
           <Route path="/join-room" element={<JoinRoom />} />
           <Route path="/login" element={<Login />} />
           
-          <Route element={<ProtectedRoute />}>
+          <Route path="/personal/login" element={<PersonalLogin />} />
+          <Route path="/personal/register" element={<PersonalRegister />} />
+          
+          {/* Room User Routes */}
+          <Route element={<ProtectedRoute allowedAccountType="ROOM" />}>
             <Route element={<MainLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/dashboard/expenses" element={<Expenses />} />
@@ -47,8 +55,17 @@ function App() {
             </Route>
           </Route>
 
+          {/* Personal Only User Routes */}
+          <Route element={<ProtectedRoute allowedAccountType="PERSONAL" />}>
+            <Route element={<PersonalLayout />}>
+              <Route path="/personal/dashboard" element={<PersonalDashboard />} />
+              <Route path="/personal/add-income" element={<AddPersonalTransaction />} />
+              <Route path="/personal/add-expense" element={<AddPersonalTransaction />} />
+            </Route>
+          </Route>
+
           {/* Catch-all route to redirect any unknown paths */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </Router>

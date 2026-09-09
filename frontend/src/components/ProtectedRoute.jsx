@@ -2,14 +2,18 @@ import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-export const ProtectedRoute = () => {
-    const { isAuthenticated, loading } = useAuth();
+export const ProtectedRoute = ({ allowedAccountType = 'ROOM' }) => {
+    const { isAuthenticated, user, loading } = useAuth();
     const location = useLocation();
 
     if (loading) return <div>Loading...</div>;
 
     if (!isAuthenticated) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        return <Navigate to={allowedAccountType === 'PERSONAL' ? "/personal/login" : "/login"} state={{ from: location }} replace />;
+    }
+
+    if (user?.accountType !== allowedAccountType) {
+        return <Navigate to={user?.accountType === 'PERSONAL' ? "/personal/dashboard" : "/dashboard"} replace />;
     }
 
     return <Outlet />;

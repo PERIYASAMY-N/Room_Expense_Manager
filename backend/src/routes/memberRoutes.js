@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const memberController = require('../controllers/memberController');
-const { protect, requireAdmin } = require('../middleware/authMiddleware');
+const { protect, requireAdmin, requireRoom } = require('../middleware/authMiddleware');
 
 router.use(protect);
+router.use(requireRoom);
 
 router.get('/', memberController.getAllMembers);
 router.post('/', requireAdmin, memberController.createMember);

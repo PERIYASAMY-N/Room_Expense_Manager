@@ -28,9 +28,11 @@ const settlementRoutes = require('./routes/settlementRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const personalMoneyRoutes = require('./routes/personalMoneyRoutes');
+const personalAuthRoutes = require('./routes/personalAuthRoutes');
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/personal-auth', personalAuthRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/expenses', expenseRoutes);

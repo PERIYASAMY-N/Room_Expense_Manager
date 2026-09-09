@@ -9,9 +9,10 @@ const protect = async (req, res, next) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             
             // Extract from JWT directly
-            req.user = decoded; // { userId, memberId, roomId, role }
+            req.user = decoded; // { userId, memberId, roomId, role, accountType }
             req.roomId = decoded.roomId;
             req.memberId = decoded.memberId;
+            req.accountType = decoded.accountType || 'ROOM'; // Default to ROOM for backward compatibility
             
             next();
         } catch (error) {
@@ -22,6 +23,13 @@ const protect = async (req, res, next) => {
     }
 };
 
+const requireRoom = (req, res, next) => {
+    if (!req.roomId) {
+        return res.status(403).json({ message: 'Room access required. Personal accounts cannot access this.' });
+    }
+    next();
+};
+
 const requireAdmin = (req, res, next) => {
     if (req.user && req.user.role === 'ADMIN') {
         next();
@@ -30,4 +38,4 @@ const requireAdmin = (req, res, next) => {
     }
 };
 
-module.exports = { protect, requireAdmin };
+module.exports = { protect, requireAdmin, requireRoom };

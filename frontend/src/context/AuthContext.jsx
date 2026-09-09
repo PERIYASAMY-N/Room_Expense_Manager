@@ -44,6 +44,38 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const personalLogin = async (email, password) => {
+        try {
+            const { personalAuthService } = await import('../services/api');
+            const res = await personalAuthService.login({ email, password });
+            const { user: userData, token: jwtToken } = res.data;
+            
+            localStorage.setItem('token', jwtToken);
+            setToken(jwtToken);
+            setUser(userData);
+            
+            return userData;
+        } catch (err) {
+            throw err;
+        }
+    };
+
+    const personalRegister = async (name, email, password) => {
+        try {
+            const { personalAuthService } = await import('../services/api');
+            const res = await personalAuthService.register({ name, email, password });
+            const { user: userData, token: jwtToken } = res.data;
+            
+            localStorage.setItem('token', jwtToken);
+            setToken(jwtToken);
+            setUser(userData);
+            
+            return userData;
+        } catch (err) {
+            throw err;
+        }
+    };
+
     const setSession = (jwtToken, userData) => {
         localStorage.setItem('token', jwtToken);
         setToken(jwtToken);
@@ -68,6 +100,8 @@ export const AuthProvider = ({ children }) => {
             isAuthenticated, 
             loading, 
             login, 
+            personalLogin,
+            personalRegister,
             logout,
             restoreSession,
             setSession

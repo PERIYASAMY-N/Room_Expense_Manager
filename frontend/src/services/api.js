@@ -23,6 +23,11 @@ export const authService = {
     getProfile: () => api.get('/auth/me')
 };
 
+export const personalAuthService = {
+    register: (data) => api.post('/personal-auth/register', data), // { name, email, password }
+    login: (data) => api.post('/personal-auth/login', data) // { email, password }
+};
+
 export const roomService = {
     create: (data) => api.post('/rooms', data), // { room_name, name, username, password, phone_number }
     getSettings: (id) => api.get(`/rooms/${id}`),

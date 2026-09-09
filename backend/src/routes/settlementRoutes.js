@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const settlementController = require('../controllers/settlementController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, requireRoom } = require('../middleware/authMiddleware');
 
 router.use(protect);
+router.use(requireRoom);
 
 router.get('/', settlementController.getSettlements);
 router.get('/recommendations', settlementController.getRecommendations);
