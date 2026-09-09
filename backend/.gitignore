@@ -20,6 +20,9 @@ node_modules/
 .env.*
 !.env.example
 
+# SSL certificates (contain sensitive data)
+certs/
+
 # Build and IDE
 .vscode/
 .idea/

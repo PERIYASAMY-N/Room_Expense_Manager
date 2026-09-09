@@ -1,0 +1,100 @@
+-- Aiven-compatible schema (uses the existing defaultdb database)
+-- Run this against your Aiven MySQL defaultdb
+
+CREATE TABLE IF NOT EXISTS rooms (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    room_code VARCHAR(8) NOT NULL UNIQUE,
+    room_name VARCHAR(100) NOT NULL,
+    invite_code VARCHAR(6) NOT NULL UNIQUE,
+    created_by INT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS members (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    room_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NULL,
+    username VARCHAR(100) NULL UNIQUE,
+    email VARCHAR(255) UNIQUE NULL,
+    full_name VARCHAR(100) NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    phone_number VARCHAR(20) DEFAULT NULL,
+    role ENUM('ADMIN', 'MEMBER') DEFAULT 'MEMBER',
+    account_type VARCHAR(20) DEFAULT 'ROOM',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE SET NULL
+);
+
+ALTER TABLE rooms ADD CONSTRAINT fk_rooms_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS expenses (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    room_id INT NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    expense_date DATE NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    note TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS expense_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    expense_id INT NOT NULL,
+    item_name VARCHAR(150) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    paid_by INT NOT NULL,
+    FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
+    FOREIGN KEY (paid_by) REFERENCES members(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS expense_item_participants (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    expense_item_id INT NOT NULL,
+    member_id INT NOT NULL,
+    share_amount DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (expense_item_id) REFERENCES expense_items(id) ON DELETE CASCADE,
+    FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+    UNIQUE(expense_item_id, member_id)
+);
+
+CREATE TABLE IF NOT EXISTS settlements (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    room_id INT NOT NULL,
+    from_member INT NOT NULL,
+    to_member INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    settlement_date DATE NOT NULL,
+    note TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+    FOREIGN KEY (from_member) REFERENCES members(id) ON DELETE CASCADE,
+    FOREIGN KEY (to_member) REFERENCES members(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS personal_transactions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    type ENUM('INCOME', 'EXPENSE') NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    transaction_date DATE NOT NULL,
+    description TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
