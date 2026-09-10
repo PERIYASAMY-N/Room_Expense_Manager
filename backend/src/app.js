@@ -3,15 +3,18 @@ const cors = require('cors');
 
 const app = express();
 
-// CORS — restrict to known frontend origin in production
+// CORS — restrict to known frontend origins in production
+// FRONTEND_URL can be a comma-separated list of allowed origins
 const allowedOrigins = process.env.FRONTEND_URL
-    ? [process.env.FRONTEND_URL]
+    ? process.env.FRONTEND_URL.split(',').map(o => o.trim())
     : ['http://localhost:5173', 'http://localhost:3000'];
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow requests with no origin (e.g. mobile apps, curl, Railway health checks)
+        // Allow requests with no origin (e.g. curl, Render health checks)
         if (!origin) return callback(null, true);
+        // Allow any vercel.app subdomain for this project (covers preview deployments)
+        if (origin.endsWith('.vercel.app')) return callback(null, true);
         if (allowedOrigins.includes(origin)) return callback(null, true);
         return callback(new Error(`CORS policy: origin ${origin} not allowed`));
     },
