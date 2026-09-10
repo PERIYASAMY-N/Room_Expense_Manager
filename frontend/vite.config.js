@@ -8,4 +8,8 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
+  define: {
+    // Ensure VITE_API_URL is available at build time
+    '__APP_VERSION__': JSON.stringify(process.env.npm_package_version)
+  }
 })
