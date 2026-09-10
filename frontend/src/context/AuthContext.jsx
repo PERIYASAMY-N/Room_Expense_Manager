@@ -19,10 +19,16 @@ export const AuthProvider = ({ children }) => {
             setToken(storedToken);
             try {
                 // If token exists, fetch current user profile
-                const res = await authService.getProfile();
+                // Wrap in a timeout so a slow cold-start doesn't block the UI forever
+                const res = await Promise.race([
+                    authService.getProfile(),
+                    new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('profile timeout')), 8000)
+                    )
+                ]);
                 setUser(res.data);
             } catch (err) {
-                // If token invalid/expired, logout
+                // If token invalid/expired/timeout, logout
                 logout();
             }
         }
@@ -106,7 +112,11 @@ export const AuthProvider = ({ children }) => {
             restoreSession,
             setSession
         }}>
-            {!loading && children}
+            {loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f9fafb' }}>
+                    <div style={{ fontSize: '1rem', color: '#6b7280' }}>Loading...</div>
+                </div>
+            ) : children}
         </AuthContext.Provider>
     );
 };
