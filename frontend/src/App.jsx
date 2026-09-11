@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import Welcome from './pages/Welcome';
 import CreateRoom from './pages/CreateRoom';
@@ -25,50 +26,52 @@ import PersonalDashboard from './pages/PersonalDashboard';
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<Welcome />} />
-          <Route path="/create-room" element={<CreateRoom />} />
-          <Route path="/join-room" element={<JoinRoom />} />
-          <Route path="/login" element={<Login />} />
-          
-          <Route path="/personal/login" element={<PersonalLogin />} />
-          <Route path="/personal/register" element={<PersonalRegister />} />
-          
-          {/* Room User Routes */}
-          <Route element={<ProtectedRoute allowedAccountType="ROOM" />}>
-            <Route element={<MainLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/dashboard/expenses" element={<Expenses />} />
-              <Route path="/dashboard/expenses/add" element={<AddExpense />} />
-              <Route path="/dashboard/expenses/:id" element={<ExpenseDetails />} />
-              <Route path="/dashboard/expenses/:id/edit" element={<AddExpense />} />
-              <Route path="/dashboard/settlements" element={<Settlements />} />
-              <Route path="/dashboard/my-money" element={<MyMoney />} />
-              <Route path="/dashboard/my-money/add-income" element={<AddPersonalTransaction />} />
-              <Route path="/dashboard/my-money/add-expense" element={<AddPersonalTransaction />} />
-              
-              <Route element={<AdminRoute />}>
-                <Route path="/dashboard/members" element={<Members />} />
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Welcome />} />
+            <Route path="/create-room" element={<CreateRoom />} />
+            <Route path="/join-room" element={<JoinRoom />} />
+            <Route path="/login" element={<Login />} />
+            
+            <Route path="/personal/login" element={<PersonalLogin />} />
+            <Route path="/personal/register" element={<PersonalRegister />} />
+            
+            {/* Room User Routes */}
+            <Route element={<ProtectedRoute allowedAccountType="ROOM" />}>
+              <Route element={<MainLayout />}>
+                <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+                <Route path="/dashboard/expenses" element={<ErrorBoundary><Expenses /></ErrorBoundary>} />
+                <Route path="/dashboard/expenses/add" element={<ErrorBoundary><AddExpense /></ErrorBoundary>} />
+                <Route path="/dashboard/expenses/:id" element={<ErrorBoundary><ExpenseDetails /></ErrorBoundary>} />
+                <Route path="/dashboard/expenses/:id/edit" element={<ErrorBoundary><AddExpense /></ErrorBoundary>} />
+                <Route path="/dashboard/settlements" element={<ErrorBoundary><Settlements /></ErrorBoundary>} />
+                <Route path="/dashboard/my-money" element={<ErrorBoundary><MyMoney /></ErrorBoundary>} />
+                <Route path="/dashboard/my-money/add-income" element={<ErrorBoundary><AddPersonalTransaction /></ErrorBoundary>} />
+                <Route path="/dashboard/my-money/add-expense" element={<ErrorBoundary><AddPersonalTransaction /></ErrorBoundary>} />
+                
+                <Route element={<AdminRoute />}>
+                  <Route path="/dashboard/members" element={<ErrorBoundary><Members /></ErrorBoundary>} />
+                </Route>
               </Route>
             </Route>
-          </Route>
 
-          {/* Personal Only User Routes */}
-          <Route element={<ProtectedRoute allowedAccountType="PERSONAL" />}>
-            <Route element={<PersonalLayout />}>
-              <Route path="/personal/dashboard" element={<PersonalDashboard />} />
-              <Route path="/personal/add-income" element={<AddPersonalTransaction />} />
-              <Route path="/personal/add-expense" element={<AddPersonalTransaction />} />
+            {/* Personal Only User Routes */}
+            <Route element={<ProtectedRoute allowedAccountType="PERSONAL" />}>
+              <Route element={<PersonalLayout />}>
+                <Route path="/personal/dashboard" element={<ErrorBoundary><PersonalDashboard /></ErrorBoundary>} />
+                <Route path="/personal/add-income" element={<ErrorBoundary><AddPersonalTransaction /></ErrorBoundary>} />
+                <Route path="/personal/add-expense" element={<ErrorBoundary><AddPersonalTransaction /></ErrorBoundary>} />
+              </Route>
             </Route>
-          </Route>
 
-          {/* Catch-all route to redirect any unknown paths */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
-    </Router>
+            {/* Catch-all route to redirect any unknown paths */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

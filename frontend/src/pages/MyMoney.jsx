@@ -7,13 +7,17 @@ import { Trash2 } from 'lucide-react';
 const MyMoney = () => {
     const [summary, setSummary] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     const fetchSummary = async () => {
+        setLoading(true);
+        setError(null);
         try {
             const response = await personalMoneyService.getSummary();
             setSummary(response.data.data);
         } catch (error) {
             console.error('Failed to fetch personal summary', error);
+            setError('Failed to load your money data. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -35,6 +39,12 @@ const MyMoney = () => {
     };
 
     if (loading) return <div className="p-8 text-center text-gray-500">Loading your finances...</div>;
+    if (error) return (
+        <div className="p-8 text-center">
+            <p className="text-red-500 mb-4">{error}</p>
+            <button onClick={fetchSummary} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">Retry</button>
+        </div>
+    );
     if (!summary) return null;
 
     const { totalIncome, totalExpenses, netBalance, categories, recentTransactions } = summary;
@@ -49,22 +59,24 @@ const MyMoney = () => {
             {/* CURRENT BALANCE */}
             <div className="text-center py-6">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">CURRENT BALANCE</h2>
-                <p className="text-5xl font-black text-blue-600">{formatCurrency(netBalance)}</p>
+                <p className={`text-5xl font-black ${netBalance >= 0 ? 'text-blue-600' : 'text-red-500'}`}>{formatCurrency(netBalance)}</p>
             </div>
 
-            {/* THIS MONTH */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-6 md:p-8 flex justify-between items-center">
-                <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">THIS MONTH</p>
-                    <div className="space-y-1">
-                        <div className="flex gap-4">
-                            <span className="text-gray-500 w-20">Money In</span>
-                            <span className="font-bold text-gray-900">{formatCurrency(totalIncome)}</span>
-                        </div>
-                        <div className="flex gap-4">
-                            <span className="text-gray-500 w-20">Money Out</span>
-                            <span className="font-bold text-gray-900">{formatCurrency(totalExpenses)}</span>
-                        </div>
+            {/* SUMMARY */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-6 md:p-8">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">SUMMARY</p>
+                <div className="grid grid-cols-3 gap-4">
+                    <div>
+                        <div className="text-gray-500 mb-1">Total Income</div>
+                        <div className="font-bold text-gray-900 text-xl">{formatCurrency(totalIncome)}</div>
+                    </div>
+                    <div>
+                        <div className="text-gray-500 mb-1">Total Expenses</div>
+                        <div className="font-bold text-gray-900 text-xl">{formatCurrency(totalExpenses)}</div>
+                    </div>
+                    <div>
+                        <div className="text-gray-500 mb-1">Savings</div>
+                        <div className="font-bold text-gray-900 text-xl">{formatCurrency(netBalance)}</div>
                     </div>
                 </div>
             </div>

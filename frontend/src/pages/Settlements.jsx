@@ -17,6 +17,7 @@ const Settlements = () => {
     const [addingToPersonal, setAddingToPersonal] = useState(false);
 
     const fetchData = async () => {
+        setLoading(true);
         try {
             const [summaryRes, historyRes] = await Promise.all([
                 dashboardService.getMySummary(),
@@ -25,7 +26,7 @@ const Settlements = () => {
             setMySummary(summaryRes.data.data);
             
             // Filter history for only settlements involving the user
-            const myHistory = historyRes.data.data.filter(
+            const myHistory = (historyRes.data.data || []).filter(
                 s => s.from_member === user?.memberId || s.to_member === user?.memberId
             );
             setHistory(myHistory);
@@ -87,6 +88,15 @@ const Settlements = () => {
     };
 
     if (loading) return <div className="p-8 text-center text-gray-500">Loading settlements...</div>;
+
+    if (!mySummary) {
+        return (
+            <div className="p-8 text-center">
+                <p className="text-red-500 mb-4">Failed to load settlement data.</p>
+                <button onClick={fetchData} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">Retry</button>
+            </div>
+        );
+    }
 
     const { payables, receivables } = mySummary;
 

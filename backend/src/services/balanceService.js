@@ -93,10 +93,11 @@ exports.calculateBalances = async (roomId, startDate, endDate) => {
     });
 
     // 5. Calculate Final Balance
+    // Formula: what you paid out - your share of expenses - what you already settled out + what you received back
+    // Positive = others still owe you money (you will receive)
+    // Negative = you still owe others money (you need to give)
     Object.values(balances).forEach(b => {
-        // Correct formula: totalPaid (from expenses) - totalShare (from expenses) 
-        // + totalGiven (settlements sent) - totalReceived (settlements received)
-        b.balance = Number((b.totalPaid - b.totalShare + b.totalGiven - b.totalReceived).toFixed(2));
+        b.balance = Number((b.totalPaid - b.totalShare - b.totalGiven + b.totalReceived).toFixed(2));
     });
 
     return Object.values(balances);

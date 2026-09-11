@@ -48,7 +48,9 @@ exports.getMySummary = async (req, res, next) => {
         const totalReceived = Number(receivedRes[0].total || 0);
 
         // 5. Net Balance
-        const netBalance = totalPaid - totalShare + totalReceived - totalGiven;
+        // Positive = others owe you (you will receive)
+        // Negative = you owe others (you need to give)
+        const netBalance = totalPaid - totalShare - totalGiven + totalReceived;
 
         // Balances and Settlements for Payables/Receivables
         const balances = await balanceService.calculateBalances(roomId, startDate, endDate);

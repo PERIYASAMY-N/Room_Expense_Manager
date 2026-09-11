@@ -40,15 +40,24 @@ const Dashboard = () => {
     }
     
     if (error) {
-        return <div className="p-8 text-red-500 text-center">{error}</div>;
+        return (
+            <div className="p-8 text-center">
+                <p className="text-red-500 mb-4">{error}</p>
+                <button onClick={() => window.location.reload()} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">Retry</button>
+            </div>
+        );
+    }
+
+    if (!roomSummary || !mySummary) {
+        return <div className="p-8 text-center text-gray-500">No data available.</div>;
     }
 
     const { roomInfo, activeMembers, recommendedSettlements, recentExpenses } = roomSummary;
     const { netBalance, payables, receivables } = mySummary;
     const personalBalance = personalSummary ? personalSummary.netBalance : 0;
 
-    const totalToPay = payables.reduce((acc, p) => acc + p.amount, 0);
-    const totalToReceive = receivables.reduce((acc, r) => acc + r.amount, 0);
+    const totalToPay = (payables || []).reduce((acc, p) => acc + p.amount, 0);
+    const totalToReceive = (receivables || []).reduce((acc, r) => acc + r.amount, 0);
 
     return (
         <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-8 pb-24 relative">
@@ -87,8 +96,7 @@ const Dashboard = () => {
             {/* 2. YOU NEED TO GIVE */}
             <div className="space-y-4">
                 <h2 className="text-sm font-bold tracking-widest text-gray-400 uppercase">YOU NEED TO GIVE</h2>
-                {payables && payables.length > 0 ? (
-                    <div className="space-y-4">
+                {payables && payables.length > 0 ? (                    <div className="space-y-4">
                         {payables.map((p, i) => (
                             <div key={i} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                                 <div className="p-5 flex justify-between items-center">
@@ -389,7 +397,7 @@ const Dashboard = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {roomSummary.balances.map((b, i) => (
+                            {roomSummary?.balances?.map((b, i) => (
                                 <tr key={i} className="hover:bg-gray-50">
                                     <td className="px-4 py-3 font-medium text-gray-900">{b.name}</td>
                                     <td className="px-4 py-3 text-right text-gray-600">{formatCurrency(b.totalPaid)}</td>
