@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Home, User, Users, LogOut, Wallet } from 'lucide-react';
+import { User, Users, LogOut, Wallet, Activity } from 'lucide-react';
 
 const MainLayout = () => {
     const { user, logout } = useAuth();
@@ -13,8 +13,8 @@ const MainLayout = () => {
     };
 
     const navItems = [
-        { name: 'Dashboard', path: '/personal', icon: Home },
-        { name: 'Personal Expenses', path: '/personal/expenses', icon: Wallet },
+        { name: 'My Money', path: '/personal', icon: Wallet },
+        { name: 'My Transactions', path: '/personal/transactions', icon: Activity },
         { name: 'Rooms', path: '/rooms', icon: Users },
     ];
 

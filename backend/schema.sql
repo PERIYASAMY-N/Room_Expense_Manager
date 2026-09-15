@@ -12,13 +12,13 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE personal_expenses (
+CREATE TABLE personal_transactions (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    amount DECIMAL(10,2) NOT NULL,
+    type ENUM('INCOME', 'EXPENSE') NOT NULL,
     category VARCHAR(100) NOT NULL,
-    expense_date DATE NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    transaction_date DATE NOT NULL,
     description TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -53,6 +53,7 @@ CREATE TABLE room_expenses (
     id INT PRIMARY KEY AUTO_INCREMENT,
     room_id INT NOT NULL,
     created_by INT NOT NULL,
+    category VARCHAR(100) NOT NULL DEFAULT 'Other',
     title VARCHAR(255) NOT NULL,
     total_amount DECIMAL(10,2) NOT NULL,
     expense_date DATE NOT NULL,
@@ -62,6 +63,14 @@ CREATE TABLE room_expenses (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE room_expense_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    expense_id INT NOT NULL,
+    item_name VARCHAR(255) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (expense_id) REFERENCES room_expenses(id) ON DELETE CASCADE
 );
 
 CREATE TABLE room_expense_payers (

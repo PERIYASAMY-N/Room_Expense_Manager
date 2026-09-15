@@ -1,23 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const { 
-    getPersonalDashboard, 
-    getPersonalExpenses, 
-    addPersonalExpense, 
-    updatePersonalExpense, 
-    deletePersonalExpense 
-} = require('../controllers/personalController');
 const { protect } = require('../middleware/authMiddleware');
+const {
+    getPersonalDashboard,
+    getTransactions,
+    addTransaction,
+    deleteTransaction
+} = require('../controllers/personalController');
 
 router.use(protect);
 
 router.get('/dashboard', getPersonalDashboard);
-router.route('/expenses')
-    .get(getPersonalExpenses)
-    .post(addPersonalExpense);
-
-router.route('/expenses/:id')
-    .put(updatePersonalExpense)
-    .delete(deletePersonalExpense);
+router.get('/transactions', getTransactions);
+router.post('/transactions', addTransaction);
+router.delete('/transactions/:id', deleteTransaction);
 
 module.exports = router;

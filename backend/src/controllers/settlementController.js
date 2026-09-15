@@ -1,4 +1,4 @@
-const { calculateBalances, getSettlementRecommendations } = require('../services/settlementService');
+const { calculateMemberBalances, calculatePairwiseSettlements } = require('../services/settlementService');
 const pool = require('../config/db');
 
 // @desc    Get room balances
@@ -20,7 +20,7 @@ const getBalances = async (req, res, next) => {
             throw new Error('Not authorized');
         }
 
-        const balances = await calculateBalances(roomId);
+        const balances = await calculateMemberBalances(roomId);
         res.json(balances);
     } catch (error) {
         next(error);
@@ -45,7 +45,7 @@ const getRecommendations = async (req, res, next) => {
             throw new Error('Not authorized');
         }
 
-        const recommendations = await getSettlementRecommendations(roomId);
+        const { recommendations } = await calculatePairwiseSettlements(roomId);
         res.json(recommendations);
     } catch (error) {
         next(error);

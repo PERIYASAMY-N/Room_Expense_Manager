@@ -1,5 +1,6 @@
 const fs = require('fs');
 const mysql = require('mysql2/promise');
+const path = require('path');
 require('dotenv').config();
 
 async function runSchema() {
@@ -11,14 +12,14 @@ async function runSchema() {
     });
 
     try {
-        const schema = fs.readFileSync('schema.sql', 'utf8');
+        const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
         await connection.query(schema);
-        console.log('Schema executed successfully.');
+        console.log('Schema successfully rebuilt!');
     } catch (err) {
-        console.error('Error executing schema:', err);
+        console.error('Error running schema:', err);
     } finally {
         await connection.end();
+        process.exit();
     }
 }
-
 runSchema();

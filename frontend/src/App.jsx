@@ -11,7 +11,7 @@ import Landing from './pages/Landing';
 
 // Pages - Personal
 import PersonalDashboard from './pages/PersonalDashboard';
-import PersonalExpenses from './pages/PersonalExpenses';
+import PersonalTransactions from './pages/PersonalTransactions';
 
 // Pages - Rooms List
 import RoomsList from './pages/RoomsList';
@@ -36,7 +36,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>
               <Route path="/personal" element={<PersonalDashboard />} />
-              <Route path="/personal/expenses" element={<PersonalExpenses />} />
+              <Route path="/personal/transactions" element={<PersonalTransactions />} />
               <Route path="/rooms" element={<RoomsList />} />
               <Route path="/rooms/new" element={<CreateJoinRoom />} />
             </Route>

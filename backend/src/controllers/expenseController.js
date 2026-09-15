@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 
-// @desc    Add a room expense
+// @desc    Add a room expense (with items)
 // @route   POST /api/rooms/:roomId/expenses
 // @access  Private
 const addRoomExpense = async (req, res, next) => {
@@ -10,9 +10,9 @@ const addRoomExpense = async (req, res, next) => {
 
         const userId = req.user.userId;
         const { roomId } = req.params;
-        const { title, totalAmount, expenseDate, description, payers, participants } = req.body;
+        const { title, category, expenseDate, description, payers, participants, items } = req.body;
 
-        if (!title || !totalAmount || !expenseDate || !payers || !participants || payers.length === 0 || participants.length === 0) {
+        if (!title || !expenseDate || !payers || !participants || payers.length === 0 || participants.length === 0) {
             res.status(400);
             throw new Error('Missing required fields');
         }
@@ -40,19 +40,38 @@ const addRoomExpense = async (req, res, next) => {
             throw new Error('One or more participants/payers are not active members of this room');
         }
 
+        // Calculate total amount from items if provided, or from payers
+        let totalAmount = 0;
+        if (items && items.length > 0) {
+            totalAmount = items.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+        } else {
+            // Fallback if no items provided
+            totalAmount = payers.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+        }
+
         // Validate total amount matches payers sum
         const payersTotal = payers.reduce((acc, p) => acc + parseFloat(p.amount), 0);
         if (Math.abs(payersTotal - parseFloat(totalAmount)) > 0.01) {
             res.status(400);
-            throw new Error('Total amount does not match sum of payers');
+            throw new Error('Total amount of items does not match sum of payers');
         }
 
         // Insert Expense
         const [expenseResult] = await connection.query(
-            'INSERT INTO room_expenses (room_id, created_by, title, total_amount, expense_date, split_method, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [roomId, userId, title, totalAmount, expenseDate, 'EQUAL', description || null]
+            'INSERT INTO room_expenses (room_id, created_by, category, title, total_amount, expense_date, split_method, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [roomId, userId, category || 'Other', title, totalAmount, expenseDate, 'EQUAL', description || null]
         );
         const expenseId = expenseResult.insertId;
+
+        // Insert Items
+        if (items && items.length > 0) {
+            for (const item of items) {
+                await connection.query(
+                    'INSERT INTO room_expense_items (expense_id, item_name, amount) VALUES (?, ?, ?)',
+                    [expenseId, item.name, item.amount]
+                );
+            }
+        }
 
         // Insert Payers (Map userId to memberId)
         const [allRoomMembers] = await connection.query('SELECT id, user_id FROM members WHERE room_id = ?', [roomId]);
@@ -77,7 +96,6 @@ const addRoomExpense = async (req, res, next) => {
                 amountOwed += 0.01;
                 remainder -= 1;
             }
-            // amountOwed needs to be 2 decimals max
             amountOwed = parseFloat(amountOwed.toFixed(2));
 
             await connection.query(
@@ -96,7 +114,7 @@ const addRoomExpense = async (req, res, next) => {
     }
 };
 
-// @desc    Get room expenses
+// @desc    Get room expenses (with items and participants)
 // @route   GET /api/rooms/:roomId/expenses
 // @access  Private
 const getRoomExpenses = async (req, res, next) => {
@@ -115,10 +133,37 @@ const getRoomExpenses = async (req, res, next) => {
             throw new Error('Not authorized');
         }
 
+        // Get basic expenses
         const [expenses] = await pool.query(
             'SELECT e.*, u.full_name as creator_name FROM room_expenses e JOIN users u ON e.created_by = u.id WHERE e.room_id = ? ORDER BY e.expense_date DESC, e.created_at DESC',
             [roomId]
         );
+
+        // Enhance with participants and payers
+        if (expenses.length > 0) {
+            const expenseIds = expenses.map(e => e.id);
+            
+            const [participants] = await pool.query(
+                'SELECT p.expense_id, u.full_name, p.amount_owed FROM room_expense_participants p JOIN members m ON p.member_id = m.id JOIN users u ON m.user_id = u.id WHERE p.expense_id IN (?)',
+                [expenseIds]
+            );
+
+            const [payers] = await pool.query(
+                'SELECT p.expense_id, u.full_name, p.amount_paid FROM room_expense_payers p JOIN members m ON p.member_id = m.id JOIN users u ON m.user_id = u.id WHERE p.expense_id IN (?)',
+                [expenseIds]
+            );
+
+            const [items] = await pool.query(
+                'SELECT expense_id, item_name, amount FROM room_expense_items WHERE expense_id IN (?)',
+                [expenseIds]
+            );
+
+            expenses.forEach(expense => {
+                expense.participants = participants.filter(p => p.expense_id === expense.id);
+                expense.payers = payers.filter(p => p.expense_id === expense.id);
+                expense.items = items.filter(i => i.expense_id === expense.id);
+            });
+        }
 
         res.json(expenses);
     } catch (error) {

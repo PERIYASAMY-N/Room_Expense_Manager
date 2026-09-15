@@ -1,137 +1,104 @@
 const pool = require('../config/db');
 
-// @desc    Get personal dashboard summary
+// @desc    Get personal dashboard summary (Balance, Income, Expenses)
 // @route   GET /api/personal/dashboard
 // @access  Private
 const getPersonalDashboard = async (req, res, next) => {
     try {
         const userId = req.user.userId;
 
-        const [expenses] = await pool.query(
-            'SELECT amount FROM personal_expenses WHERE user_id = ?',
+        const [results] = await pool.query(
+            'SELECT type, SUM(amount) as total FROM personal_transactions WHERE user_id = ? GROUP BY type',
             [userId]
         );
 
-        const totalExpenses = expenses.reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
-        
-        // Let's assume income isn't explicitly tracked in personal_expenses but could be added later.
-        // For now, if income was added, we'd query it. Let's stick to expense totals.
-        
-        // Get category breakdown
-        const [categoryData] = await pool.query(
-            'SELECT category, SUM(amount) as total FROM personal_expenses WHERE user_id = ? GROUP BY category',
-            [userId]
-        );
+        let totalIncome = 0;
+        let totalExpense = 0;
+
+        results.forEach(row => {
+            if (row.type === 'INCOME') totalIncome = parseFloat(row.total);
+            if (row.type === 'EXPENSE') totalExpense = parseFloat(row.total);
+        });
+
+        const currentBalance = totalIncome - totalExpense;
 
         res.json({
-            totalExpenses,
-            categories: categoryData
+            currentBalance,
+            totalIncome,
+            totalExpense,
+            saved: currentBalance > 0 ? currentBalance : 0
         });
     } catch (error) {
         next(error);
     }
 };
 
-// @desc    Get all personal expenses
-// @route   GET /api/personal/expenses
+// @desc    Get personal transactions
+// @route   GET /api/personal/transactions
 // @access  Private
-const getPersonalExpenses = async (req, res, next) => {
+const getTransactions = async (req, res, next) => {
     try {
         const userId = req.user.userId;
 
-        const [expenses] = await pool.query(
-            'SELECT * FROM personal_expenses WHERE user_id = ? ORDER BY expense_date DESC, created_at DESC',
+        const [transactions] = await pool.query(
+            'SELECT * FROM personal_transactions WHERE user_id = ? ORDER BY transaction_date DESC, created_at DESC',
             [userId]
         );
 
-        res.json(expenses);
+        res.json(transactions);
     } catch (error) {
         next(error);
     }
 };
 
-// @desc    Add a personal expense
-// @route   POST /api/personal/expenses
+// @desc    Add a personal transaction
+// @route   POST /api/personal/transactions
 // @access  Private
-const addPersonalExpense = async (req, res, next) => {
+const addTransaction = async (req, res, next) => {
     try {
         const userId = req.user.userId;
-        const { title, amount, category, expense_date, description } = req.body;
+        const { type, category, amount, transactionDate, description } = req.body;
 
-        if (!title || !amount || !category || !expense_date) {
+        if (!type || !category || !amount || !transactionDate) {
             res.status(400);
-            throw new Error('Please add all required fields');
+            throw new Error('Missing required fields');
+        }
+
+        if (type !== 'INCOME' && type !== 'EXPENSE') {
+            res.status(400);
+            throw new Error('Type must be INCOME or EXPENSE');
         }
 
         const [result] = await pool.query(
-            'INSERT INTO personal_expenses (user_id, title, amount, category, expense_date, description) VALUES (?, ?, ?, ?, ?, ?)',
-            [userId, title, amount, category, expense_date, description || null]
+            'INSERT INTO personal_transactions (user_id, type, category, amount, transaction_date, description) VALUES (?, ?, ?, ?, ?, ?)',
+            [userId, type, category, amount, transactionDate, description || null]
         );
 
-        res.status(201).json({
-            id: result.insertId,
-            title,
-            amount,
-            category,
-            expense_date,
-            description
-        });
+        res.status(201).json({ message: 'Transaction added', transactionId: result.insertId });
     } catch (error) {
         next(error);
     }
 };
 
-// @desc    Update a personal expense
-// @route   PUT /api/personal/expenses/:id
+// @desc    Delete a personal transaction
+// @route   DELETE /api/personal/transactions/:id
 // @access  Private
-const updatePersonalExpense = async (req, res, next) => {
+const deleteTransaction = async (req, res, next) => {
     try {
         const userId = req.user.userId;
-        const { title, amount, category, expense_date, description } = req.body;
+        const { id } = req.params;
 
-        // Check ownership
-        const [existing] = await pool.query('SELECT * FROM personal_expenses WHERE id = ?', [req.params.id]);
-        if (existing.length === 0) {
-            res.status(404);
-            throw new Error('Expense not found');
-        }
-        if (existing[0].user_id !== userId) {
-            res.status(403);
-            throw new Error('Not authorized to update this expense');
-        }
-
-        await pool.query(
-            'UPDATE personal_expenses SET title=?, amount=?, category=?, expense_date=?, description=? WHERE id=?',
-            [title, amount, category, expense_date, description || null, req.params.id]
+        const [result] = await pool.query(
+            'DELETE FROM personal_transactions WHERE id = ? AND user_id = ?',
+            [id, userId]
         );
 
-        res.json({ message: 'Expense updated successfully' });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// @desc    Delete a personal expense
-// @route   DELETE /api/personal/expenses/:id
-// @access  Private
-const deletePersonalExpense = async (req, res, next) => {
-    try {
-        const userId = req.user.userId;
-
-        // Check ownership
-        const [existing] = await pool.query('SELECT * FROM personal_expenses WHERE id = ?', [req.params.id]);
-        if (existing.length === 0) {
+        if (result.affectedRows === 0) {
             res.status(404);
-            throw new Error('Expense not found');
-        }
-        if (existing[0].user_id !== userId) {
-            res.status(403);
-            throw new Error('Not authorized to delete this expense');
+            throw new Error('Transaction not found or not authorized');
         }
 
-        await pool.query('DELETE FROM personal_expenses WHERE id = ?', [req.params.id]);
-
-        res.json({ id: req.params.id, message: 'Expense deleted' });
+        res.json({ message: 'Transaction deleted' });
     } catch (error) {
         next(error);
     }
@@ -139,8 +106,7 @@ const deletePersonalExpense = async (req, res, next) => {
 
 module.exports = {
     getPersonalDashboard,
-    getPersonalExpenses,
-    addPersonalExpense,
-    updatePersonalExpense,
-    deletePersonalExpense
+    getTransactions,
+    addTransaction,
+    deleteTransaction
 };

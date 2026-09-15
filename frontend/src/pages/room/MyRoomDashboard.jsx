@@ -1,27 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import api from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import { ArrowRight, ArrowDownRight, ArrowUpRight } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 
 const MyRoomDashboard = () => {
     const { room } = useOutletContext();
-    const { user } = useAuth();
-    const [myBalance, setMyBalance] = useState(null);
-    const [recommendations, setRecommendations] = useState([]);
+    const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         const fetchMyData = async () => {
             try {
-                const [balanceRes, recRes] = await Promise.all([
-                    api.get(`/dashboard/my-summary/${room.id}`),
-                    api.get(`/rooms/${room.id}/settlements/recommendations`)
-                ]);
-                setMyBalance(balanceRes.data);
-                setRecommendations(recRes.data);
+                const res = await api.get(`/dashboard/my-summary/${room.id}`);
+                setData(res.data);
             } catch (err) {
-                console.error(err);
+                setError('Failed to load My Room Dashboard');
             } finally {
                 setLoading(false);
             }
@@ -29,74 +23,125 @@ const MyRoomDashboard = () => {
         fetchMyData();
     }, [room.id]);
 
-    if (loading) return <div className="text-center py-10">Loading My Dashboard...</div>;
+    if (loading) return <div className="text-center py-20 text-gray-500">Loading My Dashboard...</div>;
+    if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
 
-    const net = myBalance.netBalance;
-    const iNeedToPay = recommendations.filter(r => r.fromName === user.fullName);
-    const iShouldReceive = recommendations.filter(r => r.toName === user.fullName);
+    const { financialSummary, myExpenses, mySettlements } = data;
+    const net = financialSummary.netBalance;
 
     return (
-        <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">My Room Dashboard</h2>
-
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <p className="text-sm text-gray-500 font-medium mb-1">I Paid</p>
-                    <p className="text-3xl font-bold text-gray-900">₹{myBalance.totalPaid.toFixed(2)}</p>
-                </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <p className="text-sm text-gray-500 font-medium mb-1">My Share</p>
-                    <p className="text-3xl font-bold text-gray-900">₹{myBalance.totalShare.toFixed(2)}</p>
-                </div>
-                <div className={`p-6 rounded-xl shadow-sm border ${net > 0 ? 'bg-emerald-50 border-emerald-200' : net < 0 ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
-                    <p className="text-sm text-gray-600 font-medium mb-1">My Net Position</p>
-                    <p className={`text-3xl font-bold ${net > 0 ? 'text-emerald-700' : net < 0 ? 'text-red-700' : 'text-gray-900'}`}>
-                        {net > 0 ? '+' : ''}₹{net.toFixed(2)}
-                    </p>
-                </div>
+        <div className="space-y-10">
+            {/* Header */}
+            <div>
+                <h1 className="text-2xl font-bold text-gray-900 uppercase">My Financial Summary</h1>
+                <p className="text-sm text-gray-500">Showing only your personal financial information in this room.</p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-                {/* I Need To Pay */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="bg-red-50 p-4 border-b border-gray-200 flex items-center text-red-800">
-                        <ArrowUpRight className="h-5 w-5 mr-2" />
-                        <h3 className="font-bold">I Need To Pay</h3>
-                    </div>
-                    {iNeedToPay.length > 0 ? (
-                        <div className="divide-y divide-gray-200">
-                            {iNeedToPay.map((rec, idx) => (
-                                <div key={idx} className="p-4 flex justify-between items-center">
-                                    <span className="text-gray-700 font-medium">To {rec.toName}</span>
-                                    <span className="font-bold text-red-600">₹{rec.amount.toFixed(2)}</span>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="p-6 text-center text-gray-500 text-sm">You don't owe anyone.</div>
-                    )}
-                </div>
-
-                {/* I Should Receive */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="bg-emerald-50 p-4 border-b border-gray-200 flex items-center text-emerald-800">
-                        <ArrowDownRight className="h-5 w-5 mr-2" />
-                        <h3 className="font-bold">I Should Receive</h3>
-                    </div>
-                    {iShouldReceive.length > 0 ? (
-                        <div className="divide-y divide-gray-200">
-                            {iShouldReceive.map((rec, idx) => (
-                                <div key={idx} className="p-4 flex justify-between items-center">
-                                    <span className="text-gray-700 font-medium">From {rec.fromName}</span>
-                                    <span className="font-bold text-emerald-600">₹{rec.amount.toFixed(2)}</span>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="p-6 text-center text-gray-500 text-sm">No one owes you.</div>
-                    )}
-                </div>
+            {/* MY FINANCIAL SUMMARY TABLE */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Metric</th>
+                            <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        <tr className="hover:bg-gray-50">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">Total Paid</td>
+                            <td className="px-6 py-4 text-sm font-bold text-gray-900 text-right">₹{financialSummary.totalPaid.toFixed(2)}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">Total Share</td>
+                            <td className="px-6 py-4 text-sm font-bold text-gray-900 text-right">₹{financialSummary.totalShare.toFixed(2)}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50 bg-emerald-50/30">
+                            <td className="px-6 py-4 text-sm font-medium text-emerald-800">Amount To Receive</td>
+                            <td className="px-6 py-4 text-sm font-bold text-emerald-600 text-right">₹{financialSummary.amountToReceive.toFixed(2)}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50 bg-red-50/30">
+                            <td className="px-6 py-4 text-sm font-medium text-red-800">Amount To Pay</td>
+                            <td className="px-6 py-4 text-sm font-bold text-red-600 text-right">₹{financialSummary.amountToPay.toFixed(2)}</td>
+                        </tr>
+                        <tr className={net > 0 ? 'bg-emerald-50' : net < 0 ? 'bg-red-50' : 'bg-gray-50'}>
+                            <td className="px-6 py-4 text-base font-black uppercase text-gray-900">Net Balance</td>
+                            <td className={`px-6 py-4 text-lg font-black text-right ${net > 0 ? 'text-emerald-700' : net < 0 ? 'text-red-700' : 'text-gray-900'}`}>
+                                {net > 0 ? '+' : ''}₹{net.toFixed(2)}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
+
+            {/* MY EXPENSES */}
+            <section>
+                <h3 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider">My Expenses</h3>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                    {myExpenses.length > 0 ? (
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paid By</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Expense</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">My Share</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {myExpenses.map((exp) => (
+                                    <tr key={exp.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(exp.date).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{exp.category}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{exp.paidBy}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 text-right">₹{exp.total.toFixed(2)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-blue-600 text-right">₹{exp.myShare.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div className="p-8 text-center text-gray-500">You have not participated in any expenses yet.</div>
+                    )}
+                </div>
+            </section>
+
+            {/* MY SETTLEMENT HISTORY */}
+            <section>
+                <h3 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider">My Settlement History</h3>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                    {mySettlements.length > 0 ? (
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {mySettlements.map((s) => (
+                                    <tr key={s.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(s.date).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-md ${s.type === 'RECEIVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                                                {s.type}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{s.member}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-500">{s.note || '-'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-right text-gray-900">₹{s.amount.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div className="p-8 text-center text-gray-500">No settlements recorded yet.</div>
+                    )}
+                </div>
+            </section>
         </div>
     );
 };
