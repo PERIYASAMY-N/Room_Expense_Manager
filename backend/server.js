@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 // Fail fast if required environment variables are not set
 if (!process.env.JWT_SECRET) {
