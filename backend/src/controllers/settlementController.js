@@ -1,80 +1,94 @@
-const db = require('../config/db');
-const balanceService = require('../services/balanceService');
+const { calculateBalances, getSettlementRecommendations } = require('../services/settlementService');
+const pool = require('../config/db');
 
-exports.getSettlements = async (req, res, next) => {
+// @desc    Get room balances
+// @route   GET /api/rooms/:roomId/balances
+// @access  Private
+const getBalances = async (req, res, next) => {
     try {
-        const [settlements] = await db.query(`
-            SELECT s.*, 
-                   f.name as from_name, 
-                   t.name as to_name
-            FROM settlements s
-            JOIN members f ON s.from_member = f.id
-            JOIN members t ON s.to_member = t.id
-            WHERE s.room_id = ?
-            ORDER BY s.settlement_date DESC, s.created_at DESC
-        `, [req.roomId]);
-        res.json({ success: true, data: settlements });
-    } catch (error) {
-        next(error);
-    }
-};
+        const userId = req.user.userId;
+        const { roomId } = req.params;
 
-exports.getRecommendations = async (req, res, next) => {
-    try {
-        const { startDate, endDate } = req.query;
-        const balances = await balanceService.calculateBalances(req.roomId, startDate, endDate);
-        const recommendations = await balanceService.calculateExactDebts(req.roomId, startDate, endDate);
-        
-        // Enrich recommendations with member names
-        const enriched = recommendations.map(rec => {
-            const fromMember = balances.find(b => b.memberId === rec.from);
-            const toMember = balances.find(b => b.memberId === rec.to);
-            return {
-                ...rec,
-                fromName: fromMember ? fromMember.name : 'Unknown',
-                toName: toMember ? toMember.name : 'Unknown'
-            };
-        });
-
-        res.json({ success: true, data: enriched });
-    } catch (error) {
-        next(error);
-    }
-};
-
-exports.recordSettlement = async (req, res, next) => {
-    try {
-        const { fromMember, toMember, amount, date, note } = req.body;
-        
-        if (!fromMember || !toMember || !amount || !date) {
-            return res.status(400).json({ success: false, message: 'Missing required fields' });
-        }
-        if (fromMember === toMember) {
-            return res.status(400).json({ success: false, message: 'Cannot settle with yourself' });
-        }
-        if (amount <= 0) {
-            return res.status(400).json({ success: false, message: 'Amount must be greater than 0' });
-        }
-
-        const [result] = await db.query(
-            'INSERT INTO settlements (room_id, from_member, to_member, amount, settlement_date, note) VALUES (?, ?, ?, ?, ?, ?)',
-            [req.roomId, fromMember, toMember, amount, date, note || null]
+        // Verify membership
+        const [membership] = await pool.query(
+            'SELECT id FROM members WHERE user_id = ? AND room_id = ? AND is_active = TRUE',
+            [userId, roomId]
         );
 
-        res.status(201).json({ success: true, message: 'Settlement recorded successfully', data: { id: result.insertId } });
+        if (membership.length === 0) {
+            res.status(403);
+            throw new Error('Not authorized');
+        }
+
+        const balances = await calculateBalances(roomId);
+        res.json(balances);
     } catch (error) {
         next(error);
     }
 };
 
-exports.deleteSettlement = async (req, res, next) => {
+// @desc    Get settlement recommendations
+// @route   GET /api/rooms/:roomId/settlements/recommendations
+// @access  Private
+const getRecommendations = async (req, res, next) => {
     try {
-        const [result] = await db.query('DELETE FROM settlements WHERE id = ? AND room_id = ?', [req.params.id, req.roomId]);
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ success: false, message: 'Settlement not found' });
+        const userId = req.user.userId;
+        const { roomId } = req.params;
+
+        const [membership] = await pool.query(
+            'SELECT id FROM members WHERE user_id = ? AND room_id = ? AND is_active = TRUE',
+            [userId, roomId]
+        );
+
+        if (membership.length === 0) {
+            res.status(403);
+            throw new Error('Not authorized');
         }
-        res.json({ success: true, message: 'Settlement deleted successfully' });
+
+        const recommendations = await getSettlementRecommendations(roomId);
+        res.json(recommendations);
     } catch (error) {
         next(error);
     }
+};
+
+// @desc    Record a settlement payment
+// @route   POST /api/rooms/:roomId/settlements
+// @access  Private
+const recordSettlement = async (req, res, next) => {
+    try {
+        const userId = req.user.userId;
+        const { roomId } = req.params;
+        const { paidBy, paidTo, amount, settlementDate, note } = req.body;
+
+        const [membership] = await pool.query(
+            'SELECT id FROM members WHERE user_id = ? AND room_id = ? AND is_active = TRUE',
+            [userId, roomId]
+        );
+
+        if (membership.length === 0) {
+            res.status(403);
+            throw new Error('Not authorized');
+        }
+
+        if (!paidBy || !paidTo || !amount || !settlementDate) {
+            res.status(400);
+            throw new Error('Missing required fields');
+        }
+
+        await pool.query(
+            'INSERT INTO settlements (room_id, paid_by, paid_to, amount, settlement_date, note) VALUES (?, ?, ?, ?, ?, ?)',
+            [roomId, paidBy, paidTo, amount, settlementDate, note || null]
+        );
+
+        res.status(201).json({ message: 'Settlement recorded successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = {
+    getBalances,
+    getRecommendations,
+    recordSettlement
 };

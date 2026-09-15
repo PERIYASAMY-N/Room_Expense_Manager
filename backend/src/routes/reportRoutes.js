@@ -1,12 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const reportController = require('../controllers/reportController');
+const { getPersonalReports, getRoomReports } = require('../controllers/reportController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.use(protect);
 
-router.get('/monthly-trend', reportController.getMonthlyTrend);
-router.get('/category-breakdown', reportController.getCategoryBreakdown);
-router.get('/member-spending', reportController.getMemberSpending);
+router.get('/personal', getPersonalReports);
+router.get('/room/:roomId', getRoomReports);
 
 module.exports = router;

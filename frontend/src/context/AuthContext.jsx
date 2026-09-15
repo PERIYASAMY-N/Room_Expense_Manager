@@ -1,80 +1,50 @@
 import { createContext, useState, useEffect, useContext } from 'react';
-import { authService } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [token, setToken] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        restoreSession();
-    }, []);
-
-    const restoreSession = async () => {
-        const storedToken = localStorage.getItem('token');
-        if (storedToken) {
-            setToken(storedToken);
-            try {
-                // If token exists, fetch current user profile
-                const res = await authService.getProfile();
-                setUser(res.data);
-            } catch (err) {
-                // If token invalid/expired, logout
-                logout();
-            }
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
         }
         setLoading(false);
-    };
+    }, []);
 
-    const login = async (room_code, username, password) => {
-        try {
-            const res = await authService.login({ room_code, username, password });
-            const { user: userData, token: jwtToken } = res.data;
-            
-            localStorage.setItem('token', jwtToken);
-            setToken(jwtToken);
-            setUser(userData);
-            
-            return userData;
-        } catch (err) {
-            throw err;
+    const login = async (username, password) => {
+        const response = await api.post('/auth/login', { username, password });
+        if (response.data) {
+            localStorage.setItem('user', JSON.stringify(response.data));
+            setUser(response.data);
         }
+        return response.data;
     };
 
-    const setSession = (jwtToken, userData) => {
-        localStorage.setItem('token', jwtToken);
-        setToken(jwtToken);
-        setUser(userData);
+    const register = async (userData) => {
+        const response = await api.post('/auth/register', userData);
+        if (response.data) {
+            localStorage.setItem('user', JSON.stringify(response.data));
+            setUser(response.data);
+        }
+        return response.data;
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
-        setToken(null);
+        localStorage.removeItem('user');
         setUser(null);
     };
 
-    const isAuthenticated = !!token && !!user;
-
     return (
-        <AuthContext.Provider value={{ 
-            user, 
-            member: user?.memberId,
-            room: user?.roomId,
-            role: user?.role,
-            token, 
-            isAuthenticated, 
-            loading, 
-            login, 
-            logout,
-            restoreSession,
-            setSession
-        }}>
-            {!loading && children}
+        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+            {children}
         </AuthContext.Provider>
     );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    return useContext(AuthContext);
+};

@@ -1,33 +1,27 @@
 const jwt = require('jsonwebtoken');
 
-const protect = async (req, res, next) => {
+const protect = (req, res, next) => {
     let token;
 
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    if (
+        req.headers.authorization &&
+        req.headers.authorization.startsWith('Bearer')
+    ) {
         try {
             token = req.headers.authorization.split(' ')[1];
+
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            
-            // Extract from JWT directly
-            req.user = decoded; // { userId, memberId, roomId, role }
-            req.roomId = decoded.roomId;
-            req.memberId = decoded.memberId;
-            
+            req.user = decoded; // Should contain userId
+
             next();
         } catch (error) {
-            return res.status(401).json({ message: 'Your session has expired. Please login again.' });
+            res.status(401);
+            return next(new Error('Not authorized, token failed'));
         }
     } else {
-        return res.status(401).json({ message: 'Not authorized, no token' });
+        res.status(401);
+        return next(new Error('Not authorized, no token'));
     }
 };
 
-const requireAdmin = (req, res, next) => {
-    if (req.user && req.user.role === 'ADMIN') {
-        next();
-    } else {
-        return res.status(403).json({ message: 'You do not have permission to access this page.' });
-    }
-};
-
-module.exports = { protect, requireAdmin };
+module.exports = { protect };

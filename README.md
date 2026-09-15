@@ -1,84 +1,82 @@
 # Room Expense Manager
 
-A robust, multi-tenant expense sharing application designed for shared living arrangements. The app allows roommates to log shared expenses, distribute them fairly (or unequally), record settlements, and uses an algorithm to determine the optimal way to settle debts. 
+A full-stack application built with React, Node.js, Express, and MySQL to manage personal expenses and shared room expenses.
 
-## Key Features
-- **Strict Multi-Room Architecture**: Users can create isolated rooms. A user's JWT strictly binds them to a single room. Users from Room A can never read or modify data from Room B.
-- **Role-Based Access Control (RBAC)**: Only the `ADMIN` (the room creator) can access the Members page, add new members via API, or modify existing ones.
-- **Dynamic Expense Splitting**: Add multiple items to a single expense, specify who paid, and who the participants are. The system automatically splits the total equally among the selected participants.
-- **Exact Decimal Math**: Uses precise distribution strategies to avoid the `99.99` rounding problem (e.g. `100 / 3 = 33.34, 33.33, 33.33`).
-- **Algorithm Recommendations**: The Settlement Recommendation engine calculates net balances for all members, separates creditors and debtors, and recommends minimum transactions to zero out all balances.
-- **Tabbed Dashboard**: Separate `My Summary` (individual contributions) from `Room Summary` (global room statistics).
+## Features
 
-## Tech Stack
-- **Frontend**: React (Vite), Tailwind CSS, React Router DOM, Axios, Lucide React
-- **Backend**: Node.js, Express, mysql2, JWT, bcrypt
-- **Database**: MySQL
+*   **Unified Account:** One account to manage your personal finances and join multiple shared rooms.
+*   **Personal Management:** Track your own income and expenses securely. Data is completely isolated from any shared rooms.
+*   **Room Management:** Create rooms, invite roommates via invite codes, and track shared expenses.
+*   **Settlement Engine:** Automatically calculates "Who Pays Whom" to minimize the number of transactions required to settle up.
+*   **Secure & Isolated:** JWT authentication with robust backend validation ensures users can only access data for rooms they are a member of.
 
-## Prerequisites
-- Node.js (v16 or higher)
-- MySQL Server
+## Technology Stack
 
-## Setup and Installation
+*   **Frontend:** React, Vite, Tailwind CSS, React Router DOM, Axios, Recharts
+*   **Backend:** Node.js, Express.js, JWT, bcrypt
+*   **Database:** MySQL
 
-### 1. Database Configuration
-Ensure MySQL is running, then configure your environment variables:
+## Local Setup
+
+### 1. Database
+
+Make sure you have MySQL installed and running. Execute `schema.sql` to create the required database and tables:
+
 ```bash
 cd backend
-# Create a .env file (or modify the existing one)
-echo "DB_HOST=127.0.0.1" > .env
-echo "DB_USER=root" >> .env
-echo "DB_PASSWORD=root" >> .env
-echo "JWT_SECRET=super_secret_jwt_key_12345" >> .env
-echo "PORT=5000" >> .env
+mysql -u yourusername -p < schema.sql
 ```
 
-### 2. Backend Initialization
-Install dependencies, initialize the database schema, and seed demo data:
+### 2. Backend
+
 ```bash
 cd backend
 npm install
-node seed.js
+# Create a .env file (see .env.example)
 npm run dev
 ```
-*The `seed.js` script will execute `schema.sql` (creating the `room_expense_manager` database) and insert deterministic mock data.*
 
-### 3. Frontend Initialization
-Install frontend dependencies and start the dev server:
+### 3. Frontend
+
 ```bash
 cd frontend
 npm install
+# Create a .env file with VITE_API_URL=http://localhost:5000/api
 npm run dev
 ```
-The app will be available at `http://localhost:5173`.
 
-## Demo Credentials
+## Environment Variables
 
-The `seed.js` script creates two distinct rooms:
+### Backend (`.env`)
 
-### Room A (VSB Boys Room)
-**Room ID**: `RM7K4P2X`
+```env
+PORT=5000
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=yourpassword
+DB_NAME=room_expense_manager
+JWT_SECRET=your_super_secret_jwt_key
+FRONTEND_URL=http://localhost:5173
+```
 
-#### Admin Login:
-- **Username**: `naveen`
-- **Password**: `Naveen@123`
+### Frontend (`.env`)
 
-#### Member Logins:
-- **Username**: `kadhir` | **Password**: `Kadhir@123`
-- **Username**: `navi` | **Password**: `Navi@123`
-- **Username**: `karthik` | **Password**: `Karthik@123`
+```env
+VITE_API_URL=http://localhost:5000/api
+```
 
-*(Note: Passwords are fully hashed with bcrypt in the database. Plain text passwords are NEVER stored.)*
+## Deployment
 
-### Room B (Secret Isolation Test Room)
-**Room ID**: `RMTEST99`
-- **Username**: `testuser`
-- **Password**: `Test@123`
+The application is structured for easy deployment on platforms like Railway (Backend + MySQL) and Vercel (Frontend).
 
-## Calculation Logic
-1. **Total Paid**: How much a member has paid for expenses directly.
-2. **Total Share**: How much of the total expenses legally belongs to a member.
-3. **Total Given / Received**: Manual settlements logged outside of expenses.
-4. **Net Balance**: `(Total Paid - Total Share) + Total Received - Total Given`
+1.  **Database:** Provision a MySQL database (e.g., on Railway) and run `schema.sql`.
+2.  **Backend:** Deploy the `backend` folder. Set the environment variables provided by your database host and set `FRONTEND_URL` to your Vercel URL. Railway will automatically use the `npm start` command.
+3.  **Frontend:** Deploy the `frontend` folder to Vercel. Set `VITE_API_URL` to your backend's deployed URL. The build command is `npm run build` and output directory is `dist`.
 
-If `Net Balance > 0`, the member *Gets Back* money. If `< 0`, they *Need to Pay*.
+## Architecture
+
+The system enforces strict separation between personal expenses and room expenses:
+*   `personal_expenses` table links directly to a `user_id`.
+*   `room_expenses` links to a `room_id`.
+*   Users must join a room (creating a record in the `members` table) to view or add expenses for that room. Backend middleware enforces this check on every request.

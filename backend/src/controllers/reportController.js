@@ -1,68 +1,75 @@
-const db = require('../config/db');
+const pool = require('../config/db');
 
-exports.getMonthlyTrend = async (req, res, next) => {
+// @desc    Get personal reports (monthly/category breakdown)
+// @route   GET /api/reports/personal
+// @access  Private
+const getPersonalReports = async (req, res, next) => {
     try {
-        const [results] = await db.query(`
-            SELECT DATE_FORMAT(expense_date, '%Y-%m') as month, SUM(total_amount) as total
-            FROM expenses
-            WHERE room_id = ?
-            GROUP BY month
-            ORDER BY month ASC
-        `, [req.roomId]);
-        res.json({ success: true, data: results });
+        const userId = req.user.userId;
+
+        const [monthlySpending] = await pool.query(
+            `SELECT DATE_FORMAT(expense_date, '%Y-%m') as month, SUM(amount) as total 
+             FROM personal_expenses 
+             WHERE user_id = ? 
+             GROUP BY month 
+             ORDER BY month DESC LIMIT 12`,
+            [userId]
+        );
+
+        const [categorySpending] = await pool.query(
+            `SELECT category, SUM(amount) as total 
+             FROM personal_expenses 
+             WHERE user_id = ? 
+             GROUP BY category 
+             ORDER BY total DESC`,
+            [userId]
+        );
+
+        res.json({
+            monthlySpending,
+            categorySpending
+        });
     } catch (error) {
         next(error);
     }
 };
 
-exports.getCategoryBreakdown = async (req, res, next) => {
+// @desc    Get room reports
+// @route   GET /api/reports/room/:roomId
+// @access  Private
+const getRoomReports = async (req, res, next) => {
     try {
-        const { startDate, endDate } = req.query;
-        let dateCondition = 'WHERE room_id = ?';
-        const params = [req.roomId];
-        
-        if (startDate && endDate) {
-            dateCondition += ' AND expense_date BETWEEN ? AND ?';
-            params.push(startDate, endDate);
+        const userId = req.user.userId;
+        const { roomId } = req.params;
+
+        const [membership] = await pool.query(
+            'SELECT id FROM members WHERE user_id = ? AND room_id = ? AND is_active = TRUE',
+            [userId, roomId]
+        );
+
+        if (membership.length === 0) {
+            res.status(403);
+            throw new Error('Not authorized');
         }
 
-        const [results] = await db.query(`
-            SELECT category, SUM(total_amount) as total
-            FROM expenses
-            ${dateCondition}
-            GROUP BY category
-            ORDER BY total DESC
-        `, params);
-        
-        res.json({ success: true, data: results });
+        const [monthlySpending] = await pool.query(
+            `SELECT DATE_FORMAT(expense_date, '%Y-%m') as month, SUM(total_amount) as total 
+             FROM room_expenses 
+             WHERE room_id = ? 
+             GROUP BY month 
+             ORDER BY month DESC LIMIT 12`,
+            [roomId]
+        );
+
+        res.json({
+            monthlySpending
+        });
     } catch (error) {
         next(error);
     }
 };
 
-exports.getMemberSpending = async (req, res, next) => {
-    try {
-        const { startDate, endDate } = req.query;
-        let dateCondition = 'WHERE e.room_id = ?';
-        const params = [req.roomId];
-        
-        if (startDate && endDate) {
-            dateCondition += ' AND e.expense_date BETWEEN ? AND ?';
-            params.push(startDate, endDate);
-        }
-
-        const [results] = await db.query(`
-            SELECT m.name, SUM(ep.share_amount) as total_share
-            FROM expense_participants ep
-            JOIN members m ON ep.member_id = m.id
-            JOIN expenses e ON ep.expense_id = e.id
-            ${dateCondition}
-            GROUP BY m.id, m.name
-            ORDER BY total_share DESC
-        `, params);
-        
-        res.json({ success: true, data: results });
-    } catch (error) {
-        next(error);
-    }
+module.exports = {
+    getPersonalReports,
+    getRoomReports
 };

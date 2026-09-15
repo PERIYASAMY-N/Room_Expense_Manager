@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const dashboardController = require('../controllers/dashboardController');
+const { getRoomSummary, getMySummary } = require('../controllers/dashboardController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.use(protect);
 
-router.get('/my-summary', dashboardController.getMySummary);
-router.get('/room-summary', dashboardController.getRoomSummary);
+router.get('/room-summary/:roomId', getRoomSummary);
+router.get('/my-summary/:roomId', getMySummary);
 
 module.exports = router;

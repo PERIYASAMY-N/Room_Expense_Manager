@@ -1,124 +1,213 @@
-const db = require('../config/db');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const pool = require('../config/db');
+const crypto = require('crypto');
 
-const generateToken = (payload) => {
-    if (!process.env.JWT_SECRET) {
-        throw new Error('JWT_SECRET environment variable is not set');
-    }
-    return jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: '30d',
-    });
+const generateCode = (length) => {
+    return crypto.randomBytes(Math.ceil(length / 2))
+        .toString('hex')
+        .slice(0, length)
+        .toUpperCase();
 };
 
-const generateRoomCode = () => {
-    return 'RM' + Math.random().toString(36).substring(2, 8).toUpperCase();
-};
-
-const generateInviteCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-};
-
-// POST /api/rooms
-// Create a room, admin member, and user account all at once
-const createRoom = async (req, res) => {
-    const { room_name, name, username, password, phone_number } = req.body;
-    
-    if (!room_name || !name || !username || !password) {
-        return res.status(400).json({ message: 'All required fields must be provided.' });
-    }
-
-    const connection = await db.getConnection();
+// @desc    Create new room
+// @route   POST /api/rooms
+// @access  Private
+const createRoom = async (req, res, next) => {
+    const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
 
-        // 1. Check if username already exists globally
-        const [existingUser] = await connection.query('SELECT * FROM users WHERE username = ?', [username]);
-        if (existingUser.length > 0) {
-            await connection.rollback();
-            return res.status(400).json({ message: 'Username already exists.' });
+        const userId = req.user.userId;
+        const { roomName } = req.body;
+
+        if (!roomName) {
+            res.status(400);
+            throw new Error('Room name is required');
         }
 
-        // 2. Generate codes
-        const roomCode = generateRoomCode();
-        const inviteCode = generateInviteCode();
+        const roomCode = 'RM' + generateCode(6);
+        const inviteCode = generateCode(6);
 
-        // 3. Create Room
+        // Create Room
         const [roomResult] = await connection.query(
-            'INSERT INTO rooms (room_code, room_name, invite_code) VALUES (?, ?, ?)', 
-            [roomCode, room_name, inviteCode]
+            'INSERT INTO rooms (room_code, room_name, invite_code, created_by) VALUES (?, ?, ?, ?)',
+            [roomCode, roomName, inviteCode, userId]
         );
+
         const roomId = roomResult.insertId;
 
-        // 4. Create Member (Admin)
-        const [memberResult] = await connection.query('INSERT INTO members (room_id, name) VALUES (?, ?)', [roomId, name]);
-        const memberId = memberResult.insertId;
-
-        // 5. Hash Password
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        // 6. Create User (ADMIN role)
-        const [userResult] = await connection.query(
-            'INSERT INTO users (member_id, username, password_hash, phone_number, role) VALUES (?, ?, ?, ?, ?)',
-            [memberId, username, hashedPassword, phone_number || null, 'ADMIN']
+        // Create Admin Member
+        await connection.query(
+            'INSERT INTO members (user_id, room_id, role) VALUES (?, ?, ?)',
+            [userId, roomId, 'ADMIN']
         );
-        const userId = userResult.insertId;
-
-        // 7. Set created_by on Room
-        await connection.query('UPDATE rooms SET created_by = ? WHERE id = ?', [userId, roomId]);
 
         await connection.commit();
 
-        // 8. Generate JWT
-        const payload = {
-            userId: userId,
-            memberId: memberId,
-            roomId: roomId,
+        res.status(201).json({
+            id: roomId,
+            roomCode,
+            roomName,
+            inviteCode,
             role: 'ADMIN'
-        };
-
-        res.status(201).json({ 
-            message: 'Room created successfully',
-            room_code: roomCode, 
-            invite_code: inviteCode,
-            user: {
-                id: userId,
-                username: username,
-                role: 'ADMIN',
-                memberId: memberId,
-                roomId: roomId
-            },
-            token: generateToken(payload)
         });
     } catch (error) {
         await connection.rollback();
-        res.status(500).json({ message: error.message });
+        next(error);
     } finally {
         connection.release();
     }
 };
 
-// Admin only room update
-const updateRoom = async (req, res) => {
-    const { id } = req.params;
-    const { name } = req.body;
+// @desc    Join an existing room
+// @route   POST /api/rooms/join
+// @access  Private
+const joinRoom = async (req, res, next) => {
     try {
-        await db.query('UPDATE rooms SET room_name = ? WHERE id = ?', [name, id]);
-        res.json({ success: true });
+        const userId = req.user.userId;
+        const { code } = req.body; // Can be roomCode or inviteCode
+
+        if (!code) {
+            res.status(400);
+            throw new Error('Room code or invite code is required');
+        }
+
+        const [rooms] = await pool.query(
+            'SELECT id, room_name FROM rooms WHERE room_code = ? OR invite_code = ?',
+            [code, code]
+        );
+
+        if (rooms.length === 0) {
+            res.status(404);
+            throw new Error('Room not found with provided code');
+        }
+
+        const room = rooms[0];
+
+        // Check if already a member
+        const [existing] = await pool.query(
+            'SELECT * FROM members WHERE user_id = ? AND room_id = ?',
+            [userId, room.id]
+        );
+
+        if (existing.length > 0) {
+            if (!existing[0].is_active) {
+                // Reactivate
+                await pool.query('UPDATE members SET is_active = TRUE WHERE id = ?', [existing[0].id]);
+                return res.json({ id: room.id, message: 'Rejoined room successfully' });
+            }
+            res.status(400);
+            throw new Error('You are already a member of this room');
+        }
+
+        // Add as member
+        await pool.query(
+            'INSERT INTO members (user_id, room_id, role) VALUES (?, ?, ?)',
+            [userId, room.id, 'MEMBER']
+        );
+
+        res.status(201).json({
+            id: room.id,
+            roomName: room.room_name,
+            message: 'Joined room successfully'
+        });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        next(error);
     }
 };
 
-// GET /api/rooms/:id
-const getRoomDetails = async (req, res) => {
+// @desc    Get all rooms for user
+// @route   GET /api/rooms
+// @access  Private
+const getMyRooms = async (req, res, next) => {
     try {
-        const [rooms] = await db.query('SELECT * FROM rooms WHERE id = ?', [req.user.roomId]);
-        res.json(rooms[0]);
+        const userId = req.user.userId;
+
+        const [rooms] = await pool.query(`
+            SELECT r.id, r.room_code, r.room_name, r.invite_code, r.created_by, m.role, m.is_active,
+                   (SELECT COUNT(*) FROM members WHERE room_id = r.id AND is_active = TRUE) as member_count
+            FROM rooms r
+            JOIN members m ON r.id = m.room_id
+            WHERE m.user_id = ? AND m.is_active = TRUE
+        `, [userId]);
+
+        res.json(rooms);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        next(error);
     }
 };
 
-module.exports = { createRoom, updateRoom, getRoomDetails };
+// @desc    Get room details
+// @route   GET /api/rooms/:id
+// @access  Private
+const getRoomDetails = async (req, res, next) => {
+    try {
+        const userId = req.user.userId;
+        const roomId = req.params.id;
+
+        // Verify membership
+        const [membership] = await pool.query(
+            'SELECT role, is_active FROM members WHERE user_id = ? AND room_id = ?',
+            [userId, roomId]
+        );
+
+        if (membership.length === 0 || !membership[0].is_active) {
+            res.status(403);
+            throw new Error('Not authorized to access this room');
+        }
+
+        const [rooms] = await pool.query('SELECT * FROM rooms WHERE id = ?', [roomId]);
+        
+        if (rooms.length === 0) {
+            res.status(404);
+            throw new Error('Room not found');
+        }
+
+        const room = rooms[0];
+        room.myRole = membership[0].role;
+
+        res.json(room);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get room members
+// @route   GET /api/rooms/:id/members
+// @access  Private
+const getRoomMembers = async (req, res, next) => {
+    try {
+        const userId = req.user.userId;
+        const roomId = req.params.id;
+
+        // Verify membership
+        const [membership] = await pool.query(
+            'SELECT role FROM members WHERE user_id = ? AND room_id = ? AND is_active = TRUE',
+            [userId, roomId]
+        );
+
+        if (membership.length === 0) {
+            res.status(403);
+            throw new Error('Not authorized to access this room');
+        }
+
+        const [members] = await pool.query(`
+            SELECT m.id as member_id, m.role, m.joined_at, u.id as user_id, u.full_name, u.username, m.is_active
+            FROM members m
+            JOIN users u ON m.user_id = u.id
+            WHERE m.room_id = ?
+            ORDER BY m.role ASC, m.joined_at ASC
+        `, [roomId]);
+
+        res.json(members);
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = {
+    createRoom,
+    joinRoom,
+    getMyRooms,
+    getRoomDetails,
+    getRoomMembers
+};
