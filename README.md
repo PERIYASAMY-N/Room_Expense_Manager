@@ -1,82 +1,192 @@
-# Room Expense Manager
+# 🏠 Room Expense Manager
 
-A full-stack application built with React, Node.js, Express, and MySQL to manage personal expenses and shared room expenses.
+A full-stack web application for managing shared room expenses and personal finances. Create or join a room, track shared expenses, calculate balances, and manage settlements — or use the application independently for personal expense tracking.
 
-## Features
+## ✨ Features
 
-*   **Unified Account:** One account to manage your personal finances and join multiple shared rooms.
-*   **Personal Management:** Track your own income and expenses securely. Data is completely isolated from any shared rooms.
-*   **Room Management:** Create rooms, invite roommates via invite codes, and track shared expenses.
-*   **Settlement Engine:** Automatically calculates "Who Pays Whom" to minimize the number of transactions required to settle up.
-*   **Secure & Isolated:** JWT authentication with robust backend validation ensures users can only access data for rooms they are a member of.
+### 👥 Room Expense Management
 
-## Technology Stack
+* Create a room and become its administrator.
+* Join an existing room using a Room ID and invite code.
+* Manage room members dynamically.
+* Add shared expenses and select participants.
+* Track individual contributions and expense shares.
+* Calculate who owes money and who should receive money.
+* View settlement recommendations.
 
-*   **Frontend:** React, Vite, Tailwind CSS, React Router DOM, Axios, Recharts
-*   **Backend:** Node.js, Express.js, JWT, bcrypt
-*   **Database:** MySQL
+### 💰 Personal Expense Management
 
-## Local Setup
+* Register and log in without joining a room.
+* Manage personal expenses independently.
+* Track individual spending and financial activity.
+* Access a dedicated personal dashboard.
 
-### 1. Database
+### 📊 Dashboard
 
-Make sure you have MySQL installed and running. Execute `schema.sql` to create the required database and tables:
+* View total expenses and individual contributions.
+* Clearly identify who needs to pay whom.
+* Track amounts owed and amounts receivable.
+* Access personal and room-based expense summaries.
+* Navigate between expenses, settlements, and dashboards.
 
-```bash
-cd backend
-mysql -u yourusername -p < schema.sql
+### 🔐 Authentication & Security
+
+* JWT-based authentication.
+* Password hashing using bcrypt.
+* Role-based access control.
+* Room-specific data isolation.
+* Separate personal and shared expense management.
+
+## 🛠️ Tech Stack
+
+| Frontend         | Backend    | Database |
+| ---------------- | ---------- | -------- |
+| React.js         | Node.js    | MySQL    |
+| Vite             | Express.js |          |
+| JavaScript       | REST APIs  |          |
+| Tailwind CSS     | JWT        |          |
+| React Router DOM | bcrypt     |          |
+| Axios            | dotenv     |          |
+
+## 🔄 How It Works
+
+### Room-Based Expense Management
+
+1. Create a new room or join an existing room.
+2. Enter the required account details.
+3. Use the Room ID and invite code to access a room.
+4. Add expenses and select the members who participated.
+5. Track individual shares and payments.
+6. View settlement recommendations to understand who needs to pay whom.
+
+### Personal Expense Management
+
+1. Create a personal account.
+2. Log in to the application.
+3. Access the personal dashboard.
+4. Record and manage individual expenses.
+5. Monitor personal financial activity without joining a room.
+
+## 🧮 Expense Calculation
+
+The application calculates each member's net balance using the difference between the amount they paid and their share of the expenses.
+
+**Net Balance = Total Paid − Total Share**
+
+* **Positive balance:** The member should receive money.
+* **Negative balance:** The member needs to pay money.
+* **Zero balance:** The member is settled.
+
+Settlement recommendations help simplify payments between members.
+
+## 📁 Project Structure
+
+```text
+Room-Expense-Manager/
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   ├── context/
+│   │   └── App.jsx
+│   ├── public/
+│   └── package.json
+│
+├── backend/
+│   ├── controllers/
+│   ├── routes/
+│   ├── middleware/
+│   ├── services/
+│   ├── config/
+│   ├── schema.sql
+│   ├── server.js
+│   └── package.json
+│
+├── .gitignore
+└── README.md
 ```
 
-### 2. Backend
+## ⚙️ Installation & Setup
+
+### Prerequisites
+
+* Node.js
+* npm
+* MySQL Server
+* Git
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/PERIYASAMY-N/expense_tracker.git
+cd expense_tracker
+```
+
+### 2. Set Up the Database
+
+Create a MySQL database:
+
+```sql
+CREATE DATABASE room_expense_manager;
+```
+
+Import the project's database schema into MySQL.
+
+### 3. Configure the Backend
 
 ```bash
 cd backend
 npm install
-# Create a .env file (see .env.example)
+```
+
+Create a `.env` file in the backend directory:
+
+```env
+PORT=5000
+DB_HOST=localhost
+DB_USER=your_mysql_username
+DB_PASSWORD=your_mysql_password
+DB_NAME=room_expense_manager
+JWT_SECRET=your_secure_secret
+```
+
+Replace the example values with your actual database credentials and configuration.
+
+Start the backend server:
+
+```bash
 npm run dev
 ```
 
-### 3. Frontend
+### 4. Configure the Frontend
+
+Open a new terminal:
 
 ```bash
 cd frontend
 npm install
-# Create a .env file with VITE_API_URL=http://localhost:5000/api
 npm run dev
 ```
 
-## Environment Variables
+Open the local development URL displayed in your terminal.
 
-### Backend (`.env`)
+## 🌐 Deployment
 
-```env
-PORT=5000
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=yourpassword
-DB_NAME=room_expense_manager
-JWT_SECRET=your_super_secret_jwt_key
-FRONTEND_URL=http://localhost:5173
-```
+Planned deployment architecture:
 
-### Frontend (`.env`)
+* **Frontend:** Vercel
+* **Backend:** Render
+* **Database:** Aiven MySQL
 
-```env
-VITE_API_URL=http://localhost:5000/api
-```
+Live application URL: To be added.
 
-## Deployment
+## 🚀 Future Enhancements
 
-The application is structured for easy deployment on platforms like Railway (Backend + MySQL) and Vercel (Frontend).
+* Monthly expense reports and analytics.
+* Exportable expense summaries.
+* Recurring expense management.
+* Expense reminders and notifications.
+* Enhanced settlement tracking.
+* Improved mobile responsiveness.
 
-1.  **Database:** Provision a MySQL database (e.g., on Railway) and run `schema.sql`.
-2.  **Backend:** Deploy the `backend` folder. Set the environment variables provided by your database host and set `FRONTEND_URL` to your Vercel URL. Railway will automatically use the `npm start` command.
-3.  **Frontend:** Deploy the `frontend` folder to Vercel. Set `VITE_API_URL` to your backend's deployed URL. The build command is `npm run build` and output directory is `dist`.
-
-## Architecture
-
-The system enforces strict separation between personal expenses and room expenses:
-*   `personal_expenses` table links directly to a `user_id`.
-*   `room_expenses` links to a `room_id`.
-*   Users must join a room (creating a record in the `members` table) to view or add expenses for that room. Backend middleware enforces this check on every request.
