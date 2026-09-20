@@ -1,4 +1,6 @@
-# 🏠 Room Expense Manager  Live Link -> https://room-expense-manager-three.vercel.app/
+# 🏠 Room Expense Manager  
+
+Live Link -> https://room-expense-manager-three.vercel.app/
 
 A full-stack web application for managing shared room expenses and personal finances. Create or join a room, track shared expenses, calculate balances, and manage settlements — or use the application independently for personal expense tracking.
 
